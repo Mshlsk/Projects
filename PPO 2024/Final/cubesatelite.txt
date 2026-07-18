@@ -1,0 +1,40 @@
+#include <SPI.h>
+#include <RF24.h>
+#include <math.h>
+
+int tempPin = 1;
+int hallPin = 0;
+int H;
+float A;
+float T0 = 298;
+float B = 3950;
+float R0 = 10000;
+
+RF24 radio(2, 3); // пины CE, CSN соответственно
+const byte forwardingAddress[6] = "00009";
+const String datas[] = {"[I] GPI", "[W] ASN", "[C] CM Sec 4", "[W] THI DSU", "[C] BH FSG", "[C] DLF DCA", "[C] CO", "[C] CLA"};
+
+void setup() {
+  Serial.begin(9600);
+  radio.begin();
+  radio.openWritingPipe(forwardingAddress);
+  radio.setPALevel(RF24_PA_MAX);
+  radio.setChannel(93);
+  Serial.println("Start");
+  radio.stopListening();
+}
+
+void loop() {
+  for(String i : datas) {
+    char data[27];
+    A = analogRead(tempPin);
+    float R = 10000 / ((1023 / A) - 1);
+    float T = 1 / (1 / T0 + 1 / B * log(R / R0)) - 273.15;
+    H = analogRead(hallPin);
+    String newData = i + " T:" + String(T) + " H:" + String(H);
+    Serial.println(T);
+    newData.toCharArray(data, sizeof(data));
+    radio.write(data, sizeof(data));
+    delay(3000);
+  }
+}
